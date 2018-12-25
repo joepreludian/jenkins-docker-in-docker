@@ -21,6 +21,26 @@ function review_configuration {
     echo -e "\nThere is errors. Please fex them before running it again";
     exit 1;
   fi
+  
+  DOCKER_VOLUME_JENKINS_HOME="${DOCKER_PREFIX}-vol-jenkins-home";
+  DOCKER_VOLUME_JENKINS_CORE="${DOCKER_PREFIX}-vol-jenkins-core";
+  
+  echo " - DOCKER_PREFIX = ${DOCKER_PREFIX}";
+  echo "    * DOCKER_VOLUME_JENKINS_HOME = ${DOCKER_VOLUME_JENKINS_HOME}";
+  echo "    * DOCKER_VOLUME_JENKINS_CORE = ${DOCKER_VOLUME_JENKINS_CORE}";
+  echo " - DOCKER_PROJECT_PORT = ${DOCKER_PROJECT_PORT}";
+  echo " - JENKINS_DOCKER_IMAGE = ${JENKINS_DOCKER_IMAGE}";
+
+  if [ -z "${DOCKER_AUTOYES}" ]
+  then
+    echo -e "\n - Is that OK?"
+    read
+  else
+    echo -e "\n - [DOCKER_AUTOYES SET]"
+  fi
+
+  echo;
+
 }
 
 function raise_docker_volumes {
@@ -50,6 +70,10 @@ function get_latest_war_version {
   echo $JENKINS_LATEST_VERSION_URL;
 }
 
+function print_initial_admin_password {
+  docker exec -it --user root $DOCKER_PREFIX cat /var/jenkins_home/secrets/initialAdminPassword | tr -d " \t\n\r";
+}
+
 function install_jenkins_container {
 
   JENKINS_URL=$(get_latest_war_version);
@@ -70,41 +94,47 @@ function install_jenkins_container {
     echo "Downloading latest jenkins war file into /usr/share/jenkins...";
     docker exec -it --user root $DOCKER_PREFIX wget $JENKINS_URL -O /usr/share/jenkins/jenkins.war;
 
-    echo "Getting Jenkins Cli ready...";
-    docker exec -it --user root $DOCKER_PREFIX wget http://localhost:8080/jnlpJars/jenkins-cli.jar -O /usr/share/jenkins/jenkins_cli.jar;
+    echo "Injecting Jenkins CLI...";
+    inject_cli;
 
     echo "Restarting base container...";
     docker restart $DOCKER_PREFIX;
 
-    echo "Getting initial admin Password. Acess your ip address at http://localhost:${DOCKER_PROJECT_PORT} and put the initial admin password...";
-    docker exec -it --user root $DOCKER_PREFIX cat /var/jenkins_home/secrets/initialAdminPassword;
+    echo "Overriding the installer [NEW to RUNNING] on installStateName at config.xml..."
+    docker exec -it --user root $DOCKER_PREFIX sed -i 's/<installStateName>NEW<\/installStateName>/<installStateName>RUNNING<\/installStateName>/g' /var/jenkins_home/config.xml
 
-    echo "Once you login, click to install the recommended plugins. Once you finished all the installation on the web interface, run this command again with the install_plugins command."
+    echo "Restart container...";
+    docker restart $DOCKER_PREFIX;
 
   fi
+}
+
+function inject_cli {
+    docker exec -it --user root $DOCKER_PREFIX wget http://localhost:8080/jnlpJars/jenkins-cli.jar -O /usr/share/jenkins/jenkins_cli.jar;
+
+    if [ $? -ne 0 ]
+    then
+      echo "An error occured... Trying again...";  # @todo add a rule to set a timeout;
+      inject_cli;
+    fi
+}
+
+function uninstall {
+  review_configuration || exit $?;
+  
+  echo "Stopping and removing jenkins container and volumes...";
+  docker stop $DOCKER_PREFIX; 
+  docker rm $DOCKER_PREFIX; 
+  docker volume rm $DOCKER_VOLUME_JENKINS_HOME $DOCKER_VOLUME_JENKINS_CORE;
 }
 
 #
 # MAIN FUNCTION
 #
 function install {
-  DOCKER_VOLUME_JENKINS_HOME="${DOCKER_PREFIX}-vol-jenkins-home";
-  DOCKER_VOLUME_JENKINS_CORE="${DOCKER_PREFIX}-vol-jenkins-core";
+  review_configuration || exit $1;
   
-  echo " - DOCKER_PREFIX = ${DOCKER_PREFIX}";
-  echo "    * DOCKER_VOLUME_JENKINS_HOME = ${DOCKER_VOLUME_JENKINS_HOME}";
-  echo "    * DOCKER_VOLUME_JENKINS_CORE = ${DOCKER_VOLUME_JENKINS_CORE}";
-  echo " - DOCKER_PROJECT_PORT = ${DOCKER_PROJECT_PORT}";
-  echo " - JENKINS_DOCKER_IMAGE = ${JENKINS_DOCKER_IMAGE}";
-
-  if [ -z "${DOCKER_AUTOYES}" ]
-  then
-    echo -e "\n - Is that OK?"
-    read
-  else
-    echo -e "\n - [DOCKER_AUTOYES SET] - Performing unattended install"
-  fi
-
+  
   echo -e "\nBeginning Installation..."
   echo "Pulling latest Jenkins docker image...";
   docker pull $JENKINS_DOCKER_IMAGE;
@@ -113,17 +143,39 @@ function install {
   raise_docker_volumes || exit $?;
 
   install_jenkins_container || exit $?;
+
+  echo "Waiting 20s in order to wait for Jenkins to run...";
+  sleep 20;
+
+  install_plugins;
+
+  ADMIN_PASSWORD=$(print_initial_admin_password);
+ 
+  echo;
+  echo "Access your ip address at http://localhost:${DOCKER_PROJECT_PORT}/user/admin/configure and put the initial admin password...";
+  echo "Username: admin";
+  echo "Password: ${ADMIN_PASSWORD}";
+
+  echo;
+
+  echo "Enjoy your Jenkins!"
 }
 
 function install_plugins {
-  echo "Install Plugins!";
+  ADMIN_PASSWORD=$(print_initial_admin_password);
+  PLUGIN_LIST=$(cat jenkins_plugin_names | xargs echo);
+  PLUGIN_AMOUNT=$(cat jenkins_plugin_names | wc -l);
 
-  docker exec -it --user root $DOCKER_PREFIX java -jar /usr/share/jenkins/jenkins_cli.jar -s http://localhost:8080/ -remoting login --username joey --pasword 123456;
+  echo "Installing/Updating a list of ${PLUGIN_AMOUNT} plugins (according \"jenkins_plugin_names\" file)...";
+  docker exec -it --user root $DOCKER_PREFIX java -jar /usr/share/jenkins/jenkins_cli.jar -http -s http://127.0.0.1:8080/ -auth admin:${ADMIN_PASSWORD} install-plugin $PLUGIN_LIST;
+
+  echo "Restarting container...";
+  docker restart $DOCKER_PREFIX;
 }
 
-echo "PRELUDIAN Jenkins Docker In Docker - Installer"
-echo "----------------------------------------------"
+echo "PRELUDIAN Jenkins Docker In Docker - Installer - version `cat VERSION`";
+echo "----------------------------------------------------------------------";
+echo;
 
-review_configuration || exit $?;
 $1 || exit $?;
 
