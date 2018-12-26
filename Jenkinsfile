@@ -13,10 +13,6 @@ pipeline {
       stage('Cleanup check') {
         steps {
 
-          docker_prefix = env.DOCKER_PREFIX
-          docker_volume_home = "${docker_prefix}-vol-jenkins-home"
-          docker_volume_core = "${docker_prefix}-vol-jenkins-core"
-
           sh "docker stop ${env.DOCKER_PREFIX} || true"
           sh "docker rm ${env.DOCKER_PREFIX} || true"
           sh "docker volume rm ${env.DOCKER_PREFIX}-vol-jenkins-home ${env.DOCKER_PREFIX}-vol-jenkins-core || true"
