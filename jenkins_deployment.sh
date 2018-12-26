@@ -78,7 +78,7 @@ function get_latest_war_version {
 }
 
 function print_initial_admin_password {
-  docker exec -it --user root $DOCKER_PREFIX cat /var/jenkins_home/secrets/initialAdminPassword | tr -d " \t\n\r";
+  docker exec -i --user root $DOCKER_PREFIX cat /var/jenkins_home/secrets/initialAdminPassword | tr -d " \t\n\r";
 }
 
 function install_jenkins_container {
@@ -93,12 +93,12 @@ function install_jenkins_container {
   if [ -n "${CREATE_DOCKER_INSTANCE}" ]
   then
     echo "Creating the Jenkins Container...";
-    docker run --restart=always -d -m $DOCKER_PROJECT_MEMORY_USAGE --name $DOCKER_PREFIX -v $DOCKER_VOLUME_JENKINS_HOME:/var/jenkins_home -v $DOCKER_VOLUME_JENKINS_CORE:/usr/share/jenkins -v /var/run/docker.sock:/var/run/docker.sock -it -p ${DOCKER_PROJECT_PORT}:8080 $JENKINS_DOCKER_IMAGE &> /dev/null;
+    docker run --restart=always -d -m $DOCKER_PROJECT_MEMORY_USAGE --name $DOCKER_PREFIX -v $DOCKER_VOLUME_JENKINS_HOME:/var/jenkins_home -v $DOCKER_VOLUME_JENKINS_CORE:/usr/share/jenkins -v /var/run/docker.sock:/var/run/docker.sock -i -p ${DOCKER_PROJECT_PORT}:8080 $JENKINS_DOCKER_IMAGE &> /dev/null;
     
     sleep 8;
 
     echo "Downloading latest jenkins war file into /usr/share/jenkins...";
-    docker exec -it --user root $DOCKER_PREFIX wget $JENKINS_URL -O /usr/share/jenkins/jenkins.war;
+    docker exec -i --user root $DOCKER_PREFIX wget $JENKINS_URL -O /usr/share/jenkins/jenkins.war;
 
     echo "Injecting Jenkins CLI...";
     inject_cli;
@@ -113,10 +113,10 @@ function install_jenkins_container {
 function inject_config {
   sleep 10;
   echo "Overriding the installer [NEW to RUNNING] on installStateName at config.xml...";
-  docker exec -it --user root $DOCKER_PREFIX sed -i 's/<installStateName>NEW<\/installStateName>/<installStateName>RUNNING<\/installStateName>/g' /var/jenkins_home/config.xml
+  docker exec -i --user root $DOCKER_PREFIX sed -i 's/<installStateName>NEW<\/installStateName>/<installStateName>RUNNING<\/installStateName>/g' /var/jenkins_home/config.xml
   
   echo "Injecting Environment variable where is located the jenkins_home docker volume...";
-  docker exec -it --user root $DOCKER_PREFIX sed -i "s/<globalNodeProperties\/>/<globalNodeProperties><hudson.slaves.EnvironmentVariablesNodeProperty><envVars serialization=\"custom\"><unserializable-parents\/><tree-map><default><comparator class=\"hudson.util.CaseInsensitiveComparator\"\/><\/default><int>1<\/int><string>JENKINS_HOME_VOLUME<\/string><string>${DOCKER_VOLUME_JENKINS_HOME}<\/string><\/tree-map><\/envVars><\/hudson.slaves.EnvironmentVariablesNodeProperty><\/globalNodeProperties>/g" /var/jenkins_home/config.xml;
+  docker exec -i --user root $DOCKER_PREFIX sed -i "s/<globalNodeProperties\/>/<globalNodeProperties><hudson.slaves.EnvironmentVariablesNodeProperty><envVars serialization=\"custom\"><unserializable-parents\/><tree-map><default><comparator class=\"hudson.util.CaseInsensitiveComparator\"\/><\/default><int>1<\/int><string>JENKINS_HOME_VOLUME<\/string><string>${DOCKER_VOLUME_JENKINS_HOME}<\/string><\/tree-map><\/envVars><\/hudson.slaves.EnvironmentVariablesNodeProperty><\/globalNodeProperties>/g" /var/jenkins_home/config.xml;
 
   echo "Restarting base container...";
   docker restart $DOCKER_PREFIX &> /dev/null;
@@ -124,7 +124,7 @@ function inject_config {
 
 function inject_cli {
   sleep 10;
-  docker exec -it --user root $DOCKER_PREFIX wget http://localhost:8080/jnlpJars/jenkins-cli.jar -O /usr/share/jenkins/jenkins_cli.jar;
+  docker exec -i --user root $DOCKER_PREFIX wget http://localhost:8080/jnlpJars/jenkins-cli.jar -O /usr/share/jenkins/jenkins_cli.jar;
 
   if [ $? -ne 0 ]
   then
@@ -215,7 +215,7 @@ function echo_command_return {
 
 function jenkins_cli {
   ADMIN_PASSWORD=$(print_initial_admin_password);
-  docker exec -it --user root $DOCKER_PREFIX java -jar /usr/share/jenkins/jenkins_cli.jar -http -s http://127.0.0.1:8080/ -auth admin:${ADMIN_PASSWORD} $@;
+  docker exec -i --user root $DOCKER_PREFIX java -jar /usr/share/jenkins/jenkins_cli.jar -http -s http://127.0.0.1:8080/ -auth admin:${ADMIN_PASSWORD} $@;
 }
 
 function preflight_check {
