@@ -1,3 +1,7 @@
+0.7.0
+-----
+- Add Jenkins Pipelines;
+
 0.6.1
 -----
 - Enhancements on the tool;
