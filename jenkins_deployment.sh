@@ -15,7 +15,14 @@ function review_configuration {
     ERRORS_FOUND=1; 
     echo " - DOCKER_PROJECT_PORT variable not set"; 
   fi
-
+  
+  if [ -z "${DOCKER_PROJECT_MEMORY_USAGE}" ] 
+  then 
+    DOCKER_PROJECT_MEMORY_USAGE='1536m';
+    echo " - DOCKER_PROJECT_PORT - using default"; 
+  fi
+  
+  # Error handling
   if [ -n "${ERRORS_FOUND}" ] 
   then 
     echo -e "\nThere is errors. Please fex them before running it again";
@@ -30,6 +37,7 @@ function review_configuration {
   echo "    * DOCKER_VOLUME_JENKINS_CORE = ${DOCKER_VOLUME_JENKINS_CORE}";
   echo " - DOCKER_PROJECT_PORT = ${DOCKER_PROJECT_PORT}";
   echo " - JENKINS_DOCKER_IMAGE = ${JENKINS_DOCKER_IMAGE}";
+  echo " - DOCKER_PROJECT_MEMORY_USAGE = ${DOCKER_PROJECT_MEMORY_USAGE}";
 
   if [ -z "${DOCKER_AUTOYES}" ]
   then
@@ -86,7 +94,7 @@ function install_jenkins_container {
   if [ -n "${CREATE_DOCKER_INSTANCE}" ]
   then
     echo "Creating instance...";
-    docker run --restart=always -d -m 1536M --name $DOCKER_PREFIX -v $DOCKER_VOLUME_JENKINS_HOME:/var/jenkins_home -v $DOCKER_VOLUME_JENKINS_CORE:/usr/share/jenkins -it -p ${DOCKER_PROJECT_PORT}:8080 $JENKINS_DOCKER_IMAGE;
+    docker run --restart=always -d -m $DOCKER_PROJECT_MEMORY_USAGE --name $DOCKER_PREFIX -v $DOCKER_VOLUME_JENKINS_HOME:/var/jenkins_home -v $DOCKER_VOLUME_JENKINS_CORE:/usr/share/jenkins -v /var/run/docker.sock:/var/run/docker.sock -it -p ${DOCKER_PROJECT_PORT}:8080 $JENKINS_DOCKER_IMAGE;
     
     echo "Waiting a little...";
     sleep 8;
@@ -97,16 +105,21 @@ function install_jenkins_container {
     echo "Injecting Jenkins CLI...";
     inject_cli;
 
-    echo "Restarting base container...";
-    docker restart $DOCKER_PREFIX;
-
-    echo "Overriding the installer [NEW to RUNNING] on installStateName at config.xml..."
-    docker exec -it --user root $DOCKER_PREFIX sed -i 's/<installStateName>NEW<\/installStateName>/<installStateName>RUNNING<\/installStateName>/g' /var/jenkins_home/config.xml
-
-    echo "Restart container...";
+   echo "Restart container...";
     docker restart $DOCKER_PREFIX;
 
   fi
+}
+
+function inject_config {
+    echo "Overriding the installer [NEW to RUNNING] on installStateName at config.xml...";
+    docker exec -it --user root $DOCKER_PREFIX sed -i 's/<installStateName>NEW<\/installStateName>/<installStateName>RUNNING<\/installStateName>/g' /var/jenkins_home/config.xml
+    
+    echo "Injecting Environment variable where is located the jenkins_home docker volume...";
+    docker exec -it --user root $DOCKER_PREFIX sed -i "s/<globalNodeProperties\/>/<globalNodeProperties><hudson.slaves.EnvironmentVariablesNodeProperty><envVars serialization=\"custom\"><unserializable-parents\/><tree-map><default><comparator class=\"hudson.util.CaseInsensitiveComparator\"\/><\/default><int>1<\/int><string>JENKINS_HOME_VOLUME<\/string><string>${DOCKER_VOLUME_JENKINS_HOME}<\/string><\/tree-map><\/envVars><\/hudson.slaves.EnvironmentVariablesNodeProperty><\/globalNodeProperties>/g" /var/jenkins_home/config.xml;
+
+    echo "Restarting base container...";
+    docker restart $DOCKER_PREFIX;
 }
 
 function inject_cli {
@@ -144,10 +157,12 @@ function install {
 
   install_jenkins_container || exit $?;
 
-  echo "Waiting 20s in order to wait for Jenkins to run...";
-  sleep 20;
+  echo "Waiting 10s in order to wait for Jenkins to run...";
+  sleep 10;
 
-  install_plugins;
+  inject_config;
+
+  echo "Skipping install_plugins...";  #install_plugins;
 
   ADMIN_PASSWORD=$(print_initial_admin_password);
  
@@ -173,9 +188,21 @@ function install_plugins {
   docker restart $DOCKER_PREFIX;
 }
 
+function help {
+  echo "Usage: $0";
+}
+
 echo "PRELUDIAN Jenkins Docker In Docker - Installer - version `cat VERSION`";
 echo "----------------------------------------------------------------------";
 echo;
 
+if [ -z $1 ]
+then
+  help;
+  echo;
+  exit 1;
+fi
+
+# Perform the action
 $1 || exit $?;
 
