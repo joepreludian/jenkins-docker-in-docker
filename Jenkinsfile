@@ -8,6 +8,10 @@ pipeline {
       DOCKER_PROJECT_PORT = '19001'
     }
 
+    options {
+      disableConcurrentBuilds()
+    }
+
     stages {
 
       stage('Cleanup check') {
