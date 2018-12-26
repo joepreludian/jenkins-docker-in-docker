@@ -61,6 +61,6 @@ This command will remove both jenkins container, and their associated images;
 # Contribute!
 
 Feel free to raise a pull request or an issue! It's made with pure bash script in order to be as more compatible as possible.
-This is a ugly version of the script, but it is functional. I promisse to enhance it with the time and the adoption of more users.
+This is an ugly version of the script, but it is functional. I promisse to enhance it with the time and the adoption of more users.
 
 Thank you and enjoy!
