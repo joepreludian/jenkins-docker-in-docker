@@ -1,3 +1,8 @@
+0.7.3
+-----
+- Add Jenkins Badge;
+- Typos on README file;
+
 0.7.2
 -----
 - Remove the TTY allocation inside docker commands to ease the installation into a non interactive installation;

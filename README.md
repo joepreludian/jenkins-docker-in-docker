@@ -1,6 +1,8 @@
+[![Build Status](http://jarvis.preludian.com:8080/job/OpenSourceProjects/job/JenkinsDockerInDocker/job/master/badge/icon)](http://jarvis.preludian.com:8080/job/OpenSourceProjects/job/JenkinsDockerInDocker/job/master/)
+
 # Preludian Jenkins Docker in Docker
 
-Simple tool to install and run a Jenkins Docker-in-Docker for your computer or a production server.
+Welcome to the simple tool to install and run a Jenkins Docker-in-Docker in your own computer or a small production server.
 
 # What is Docker-in-Docker?
 
