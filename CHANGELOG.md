@@ -1,3 +1,7 @@
+0.8.2
+-----
+- Fixed a problem with Pipeline
+
 0.8.1
 -----
 - Bugfixes
