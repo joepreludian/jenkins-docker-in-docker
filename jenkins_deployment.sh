@@ -2,6 +2,32 @@
 
 JENKINS_DOCKER_IMAGE="jenkins/jenkins:lts"
 
+MAX_RETRIES=42;
+CURRENT_RETRY=1
+function doretry {
+  echo "[${CURRENT_RETRY} of ${MAX_RETRIES}] - Executing (${@})... ";
+
+  sleep 10;
+
+  $@;
+
+  if [ $? -ne 0 ]
+  then
+    if [ $CURRENT_RETRY -gt $MAX_RETRIES ]
+    then
+      echo "FAIL - Max Attempts excecuted! Quitting";
+      exit 2;
+    else
+      CURRENT_RETRY=$(($CURRENT_RETRY + 1));
+      echo "FAIL. Retrying";
+      doretry $@;
+    fi
+  else
+    echo "SUCCESS";
+    CURRENT_RETRY=1;
+  fi
+}
+
 function review_configuration {
   if [ -z "${DOCKER_PREFIX}" ] 
   then 
@@ -95,23 +121,19 @@ function install_jenkins_container {
     echo "Creating the Jenkins Container...";
     docker run --restart=always -d -m $DOCKER_PROJECT_MEMORY_USAGE --name $DOCKER_PREFIX -v $DOCKER_VOLUME_JENKINS_HOME:/var/jenkins_home -v $DOCKER_VOLUME_JENKINS_CORE:/usr/share/jenkins -v /var/run/docker.sock:/var/run/docker.sock -i -p ${DOCKER_PROJECT_PORT}:8080 $JENKINS_DOCKER_IMAGE &> /dev/null;
     
-    sleep 8;
-
     echo "Downloading latest jenkins war file into /usr/share/jenkins...";
-    docker exec -i --user root $DOCKER_PREFIX wget $JENKINS_URL -O /usr/share/jenkins/jenkins.war;
+    doretry docker exec -i --user root $DOCKER_PREFIX wget $JENKINS_URL -O /usr/share/jenkins/jenkins.war;
 
     echo "Injecting Jenkins CLI...";
-    inject_cli;
+    doretry inject_cli;
 
     echo "Restart container...";
     docker restart $DOCKER_PREFIX &> /dev/null;
-    sleep 10;
 
   fi
 }
 
 function inject_config {
-  sleep 10;
   echo "Overriding the installer [NEW to RUNNING] on installStateName at config.xml...";
   docker exec -i --user root $DOCKER_PREFIX sed -i 's/<installStateName>NEW<\/installStateName>/<installStateName>RUNNING<\/installStateName>/g' /var/jenkins_home/config.xml
   
@@ -123,7 +145,6 @@ function inject_config {
 }
 
 function inject_cli {
-  sleep 10;
   docker exec -i --user root $DOCKER_PREFIX wget http://localhost:8080/jnlpJars/jenkins-cli.jar -O /usr/share/jenkins/jenkins_cli.jar;
 
   if [ $? -ne 0 ]
@@ -158,18 +179,15 @@ function install {
   echo "Raising Docker volumes...";
   raise_docker_volumes || exit $?;
 
-  install_jenkins_container || exit $?;
+  doretry install_jenkins_container || exit $?;
 
-  echo "Waiting 10s in order to wait for Jenkins to run...";
-  sleep 10;
+  doretry inject_config;
 
-  inject_config;
-
-  install_plugins;
+  doretry install_plugins;
 
   ADMIN_PASSWORD=$(print_initial_admin_password);
  
-  preflight_check || {
+  doretry preflight_check || {
     echo "There is an error. I suggest that you uninstall prior to re-installing it again.";
   };
 
@@ -185,9 +203,6 @@ function install {
 
 function install_plugins {
 
-  echo "Waiting a 10s in order to get Jenkins up...";
-  sleep 10;
-
   PLUGIN_LIST=$(cat jenkins_plugin_names | xargs echo);
   PLUGIN_AMOUNT=$(cat jenkins_plugin_names | wc -l);
 
@@ -197,8 +212,6 @@ function install_plugins {
   echo "Restarting container...";
   docker restart $DOCKER_PREFIX;
 
-  sleep 20;
-  echo "Waiting 20s in order to get Jenkins ready...";
 }
 
 function echo_command_return {
@@ -219,7 +232,6 @@ function jenkins_cli {
 }
 
 function preflight_check {
-  sleep 10;
   echo "Preflight check!";
   
   echo -n " - Checking if site responds - ";
