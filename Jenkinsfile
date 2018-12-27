@@ -34,12 +34,6 @@ pipeline {
         }
       }
 
-      stage('Testing') {
-        steps {
-          sh './jenkins_deployment.sh preflight_test'
-        }
-      }
-
       stage('Smoke Uninstall') {
         steps {
           sh './jenkins_deployment.sh uninstall'
