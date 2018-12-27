@@ -37,10 +37,6 @@ pipeline {
       stage('Smoke Uninstall') {
         steps {
           sh './jenkins_deployment.sh uninstall'
-
-          sh "if docker inspect ${env.DOCKER_PREFIX}; then; exit 1; else; exit 0; fi"
-          sh "if docker volume inspect ${env.DOCKER_PREFIX}-vol-jenkins-home; then; exit 1; else; exit 0; fi"
-          sh "if docker volume inspect ${env.DOCKER_PREFIX}-vol-jenkins-core; then; exit 1; else; exit 0; fi"
         }
       }
 
