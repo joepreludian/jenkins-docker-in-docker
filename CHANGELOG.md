@@ -1,3 +1,7 @@
+0.8.1
+-----
+- Bugfixes
+
 0.8.0
 -----
 - Add a script doretry function in order to run a command several times until max retries;

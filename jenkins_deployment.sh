@@ -146,12 +146,6 @@ function inject_config {
 
 function inject_cli {
   docker exec -i --user root $DOCKER_PREFIX wget http://localhost:8080/jnlpJars/jenkins-cli.jar -O /usr/share/jenkins/jenkins_cli.jar;
-
-  if [ $? -ne 0 ]
-  then
-    echo "An error occured... Trying again...";  # @todo add a rule to set a timeout;
-    inject_cli;
-  fi
 }
 
 function uninstall {
@@ -187,9 +181,7 @@ function install {
 
   ADMIN_PASSWORD=$(print_initial_admin_password);
  
-  doretry preflight_check || {
-    echo "There is an error. I suggest that you uninstall prior to re-installing it again.";
-  };
+  doretry preflight_check;
 
   echo;
   echo "Access your ip address at http://localhost:${DOCKER_PROJECT_PORT}/user/admin/configure and put the initial admin password...";
@@ -207,10 +199,10 @@ function install_plugins {
   PLUGIN_AMOUNT=$(cat jenkins_plugin_names | wc -l);
 
   echo "Installing/Updating a list of ${PLUGIN_AMOUNT} plugins (according \"jenkins_plugin_names\" file)...";
-  jenkins_cli install-plugin $PLUGIN_LIST;
+  doretry jenkins_cli install-plugin $PLUGIN_LIST;
 
   echo "Restarting container...";
-  docker restart $DOCKER_PREFIX;
+  doretry docker restart $DOCKER_PREFIX;
 
 }
 
@@ -234,9 +226,6 @@ function jenkins_cli {
 function preflight_check {
   echo "Preflight check!";
   
-  echo -n " - Checking if site responds - ";
-  curl -q http://localhost:$DOCKER_PROJECT_PORT/ &> /dev/null; echo_command_return || exit $?;
-
   echo -n " - Getting jenkins version: ";
   jenkins_cli version || exit $?;
 

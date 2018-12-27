@@ -6,6 +6,7 @@ pipeline {
       DOCKER_AUTOYES = '1'
       DOCKER_PREFIX = "prl-testing"
       DOCKER_PROJECT_PORT = '19001'
+      DOCKER_PROJECT_MEMORY_USAGE = '1024m'
     }
 
     options {
