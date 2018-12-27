@@ -181,7 +181,7 @@ function install {
 
   ADMIN_PASSWORD=$(print_initial_admin_password);
  
-  doretry preflight_check;
+  preflight_check;
 
   echo;
   echo "Access your ip address at http://localhost:${DOCKER_PROJECT_PORT}/user/admin/configure and put the initial admin password...";
@@ -226,11 +226,8 @@ function jenkins_cli {
 function preflight_check {
   echo "Preflight check!";
   
-  echo -n " - Getting jenkins version: ";
-  jenkins_cli version || exit $?;
-
-  echo -n " - Installed Plugins";
-  jenkins_cli list-plugins || exit $?;
+  doretry jenkins_cli version;
+  doretry jenkins_cli list-plugins;
 
 }
 
