@@ -9,7 +9,8 @@ pipeline {
     }
 
     options {
-      disableConcurrentBuilds()
+      disableConcurrentBuilds(),
+      buildDiscarder(logRotator(numToKeepStr: '5')) 
     }
 
     stages {
