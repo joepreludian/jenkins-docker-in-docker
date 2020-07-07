@@ -1,5 +1,11 @@
 [![Build Status](http://jarvis.preludian.com:8080/job/OpenSourceProjects/job/JenkinsDockerInDocker/job/master/badge/icon)](http://jarvis.preludian.com:8080/job/OpenSourceProjects/job/JenkinsDockerInDocker/job/master/)
 
+```
+This project will be decomissioned; It will be deactivated because a new project will replace it. It called jenkins-cluster-dind and aims to be more easy to handle, using docker-compose.
+```
+https://github.com/joepreludian/jenkins-cluster-dind
+
+
 # Preludian Jenkins Docker in Docker
 
 Welcome to the simple tool to install and run a Jenkins Docker-in-Docker in your own computer or a small production server.
