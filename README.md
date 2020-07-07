@@ -1,8 +1,8 @@
 [![Build Status](http://jarvis.preludian.com:8080/job/OpenSourceProjects/job/JenkinsDockerInDocker/job/master/badge/icon)](http://jarvis.preludian.com:8080/job/OpenSourceProjects/job/JenkinsDockerInDocker/job/master/)
 
-```
+# Decomissioned project
 This project will be decomissioned; It will be deactivated because a new project will replace it. It called jenkins-cluster-dind and aims to be more easy to handle, using docker-compose.
-```
+
 https://github.com/joepreludian/jenkins-cluster-dind
 
 
